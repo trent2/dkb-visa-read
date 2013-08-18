@@ -31,7 +31,7 @@ class DkbWebBanking
     @webBankingUrl = 'https://banking.dkb.de/dkb/-?$javascript=disabled'
     @enableLogging = enableLogging
     @agent = Mechanize.new
-    @agent.follow_meta_refresh = true
+    @agent.follow_meta_refresh = false
     @agent.keep_alive = false
     if File.exists?('cacert.pem')
       @agent.ca_file = 'cacert.pem'
@@ -43,33 +43,43 @@ class DkbWebBanking
 
   def logon(account, password)
     @agent.get(@webBankingUrl)
-    @agent.page.forms.first.j_username  = account
-    @agent.page.forms.first.j_password = password
+    form = @agent.page.forms.first
 
-    @mainPage = @agent.page.forms.first.submit
+    form.field_with(name: name_for_label(/Kontonummer.*Anmeldename/)).value = account
+    form.field_with(name: name_for_label(/PIN/)).value = password
+
+    button = form.button_with(value: /Anmelden/)
+
+    @agent.submit(form, button)
     log_current_page('logon')
-
-    raise DkbWebBankingError, 'Login fehlgeschlagen' if not @mainPage.form_with(:name => 'logoutform')
   end
 
   def logoff
-    logoutForm = @mainPage.form_with(:name => 'logoutform')
-    if logoutForm
-      logoutForm.click_button
-      log_current_page('logoff')
+    @agent.page.link_with(:id => /logout/).click
+    unless @agent.page.meta_refresh.empty?
+        @agent.page.meta_refresh.first.click
     end
+    log_current_page('logoff')
   end
 
   def read_visa_turnovers(fromDate, toDate)
-    # Umsätze / Kreditkartenumsätze
     @agent.page.link_with(:text => /Kreditkartenums.*tze/).click
+    unless @agent.page.meta_refresh.empty?
+        @agent.page.meta_refresh.first.click
+    end
     log_current_page('creditCardPage')
 
-    creditCardForm = @agent.page.form_with(:name => /form-.*/, :class => 'form validate')
+    creditCardForms = @agent.page.forms_with(:name => /form-[0-9]+_1/)
+    creditCardForm = nil
+    for creditCardForm in creditCardForms
+      unless creditCardForm.field_with(:name => 'slCreditCard').nil?
+        break
+      end
+    end
 
     transactions = {}
 
-    for card in creditCardForm.field_with('slCreditCard').options
+    for card in creditCardForm.field_with(:name => 'slCreditCard').options
       creditCardForm.radiobuttons[1].check
       creditCardForm.postingDate = fromDate
       creditCardForm.toPostingDate = toDate
@@ -79,31 +89,19 @@ class DkbWebBanking
       card_number = $1.chomp.strip.tr('*','x')
 
       transactions[card_number] = []
-
-      pageNumber = 1
       resultPage = creditCardForm.submit
 
-      #
-      # The request for the second credit card might not start with the first
-      # page, so we need to jump explicitly to the first page
-      #
-      firstPageLinkText = '|<'
-      firstPageLinkText = '|&lt;' if !resultPage.link_with(:text => firstPageLinkText)
-
-      if resultPage.link_with(:text => firstPageLinkText)
-        resultPage = resultPage.link_with(:text => firstPageLinkText).click
+      # click on link to first page of result list
+      l = resultPage.link_with(:text => "1")
+      unless l.nil?
+        l.click
       end
-      log_current_page("resultPage_#{card_number}_#{pageNumber}")
 
+      pageNumber = 1
+      log_current_page("resultPage_#{card_number}_#{pageNumber}")
       transactions[card_number] += parse_visa_transactions(resultPage)
 
-      #
-      # Workaround - on some systems, the &gt; entity is not translated to >
-      #
-      nextText = '>>'
-      nextText = '&gt;&gt;' if !resultPage.link_with(:text => nextText)
-
-      while nextLink = resultPage.link_with(:text => nextText) do
+      for nextLink in resultPage.links_with(:text => /^[0-9]+$/) do
         pageNumber += 1
         resultPage = nextLink.click
         log_current_page("resultPage_#{card_number}_#{pageNumber}")
@@ -116,32 +114,35 @@ class DkbWebBanking
 
   def parse_visa_transactions(doc)
     transactions = []
-    for row in @agent.page.search('tr')
+    for row in @agent.page.search('tbody tr') do
       columns = row.search('td')
-      if columns.count > 1
-        posting_date, receipt_date = columns[1].text.split
 
-        transaction = CreditCardTransaction.new
-        transaction.Date = posting_date
-        transaction.ReceiptDate = receipt_date
-        transaction.Payee = columns[2].text.strip
+      posting_date, receipt_date = columns[1].text.split
 
-        if columns[3].text.strip =~ /(.[0-9.]+,[0-9]+)/m
-          transaction.Amount = format_number($1)
-          transactions << transaction
-        end
+      transaction = CreditCardTransaction.new
+      transaction.Date = posting_date
+      transaction.ReceiptDate = receipt_date
+      transaction.Payee = columns[2].text.strip
+      columns[3].text.strip =~ /([-0-9.]+,[0-9]+)/m
+
+      if columns[3].text.strip =~ /([-0-9.]+,[0-9]+)/m
+        transaction.Amount = format_number($1)
+        transactions << transaction
       end
     end
     return transactions
   end
 
-  def format_number(number)
-    #    return number.tr('.', '').tr(',','.')
-    return number.tr('.', '')
+  def name_for_label(label_text)
+    @agent.page.labels.select { |l| l.text =~ /#{label_text}/ }
+    .first.node.attribute('for').value
   end
 
   def log_current_page(filename)
     File.new("#{filename}.html", 'w') << @agent.page.body if @enableLogging
   end
-end
 
+  def format_number(number)
+    return number.tr('.', '')
+  end
+end
