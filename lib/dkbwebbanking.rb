@@ -31,7 +31,7 @@ class DkbWebBanking
     @webBankingUrl = 'https://banking.dkb.de/dkb/-?$javascript=disabled'
     @enableLogging = enableLogging
     @agent = Mechanize.new
-    @agent.follow_meta_refresh = true
+    @agent.follow_meta_refresh = false
     @agent.keep_alive = false
     if File.exists?('cacert.pem')
       @agent.ca_file = 'cacert.pem'
@@ -43,30 +43,30 @@ class DkbWebBanking
 
   def logon(account, password)
     @agent.get(@webBankingUrl)
-#    puts @agent.page.forms.first.fields[1].inspect
-#    puts @agent.page.forms.first.fields[2].inspect
-#    exit
-    @agent.page.forms.first.fields[1].value = account
-    @agent.page.forms.first.fields[2].value = password
+    form = @agent.page.forms.first
 
-    @mainPage = @agent.page.forms.first.submit
+    form.field_with(name: name_for_label(/Kontonummer.*Anmeldename/)).value = account
+    form.field_with(name: name_for_label(/PIN/)).value = password
+
+    button = form.button_with(value: /Anmelden/)
+
+    @agent.submit(form, button)
     log_current_page('logon')
-
-#    raise DkbWebBankingError, 'Login fehlgeschlagen' if not @mainPage.form_with(:name => 'logoutform')
   end
 
   def logoff
-    logoutLink = @agent.page.link_with(:text => 'Abmelden')
-    unless logoutLink.nil?
-      logoutLink.click
-      log_current_page('logoff')
+    @agent.page.link_with(:id => /logout/).click
+    unless @agent.page.meta_refresh.empty?
+        @agent.page.meta_refresh.first.click
     end
+    log_current_page('logoff')
   end
 
   def read_visa_turnovers(fromDate, toDate)
-    # Umsätze / Kreditkartenumsätze
-#    @agent.page.link_with(:text => /Ums.*tze/).click
     @agent.page.link_with(:text => /Kreditkartenums.*tze/).click
+    unless @agent.page.meta_refresh.empty?
+        @agent.page.meta_refresh.first.click
+    end
     log_current_page('creditCardPage')
 
     creditCardForms = @agent.page.forms_with(:name => /form-[0-9]+_1/)
@@ -116,7 +116,6 @@ class DkbWebBanking
     transactions = []
     for row in @agent.page.search('tbody tr') do
       columns = row.search('td')
-      
       posting_date, receipt_date = columns[1].text.split
 
       transaction = CreditCardTransaction.new
@@ -133,12 +132,16 @@ class DkbWebBanking
     return transactions
   end
 
+  def name_for_label(label_text)
+    @agent.page.labels.select { |l| l.text =~ /#{label_text}/ }
+    .first.node.attribute('for').value
+  end
+
   def log_current_page(filename)
     File.new("#{filename}.html", 'w') << @agent.page.body if @enableLogging
   end
 
   def format_number(number)
-    # return number.tr('.', '').tr(',','.')
     return number.tr('.', '')
   end
 end
