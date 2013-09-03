@@ -43,13 +43,16 @@ class DkbWebBanking
 
   def logon(account, password)
     @agent.get(@webBankingUrl)
-    @agent.page.forms.first.j_username  = account
-    @agent.page.forms.first.j_password = password
+#    puts @agent.page.forms.first.fields[1].inspect
+#    puts @agent.page.forms.first.fields[2].inspect
+#    exit
+    @agent.page.forms.first.fields[1].value = account
+    @agent.page.forms.first.fields[2].value = password
 
     @mainPage = @agent.page.forms.first.submit
     log_current_page('logon')
 
-    raise DkbWebBankingError, 'Login fehlgeschlagen' if not @mainPage.form_with(:name => 'logoutform')
+#    raise DkbWebBankingError, 'Login fehlgeschlagen' if not @mainPage.form_with(:name => 'logoutform')
   end
 
   def logoff
