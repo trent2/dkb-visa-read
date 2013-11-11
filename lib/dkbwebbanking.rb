@@ -45,7 +45,7 @@ class DkbWebBanking
     @agent.get(@webBankingUrl)
     form = @agent.page.forms.first
 
-    form.field_with(name: name_for_label(/Kontonummer.*Anmeldename/)).value = account
+    form.field_with(name: name_for_label(/Anmeldename/)).value = account
     form.field_with(name: name_for_label(/PIN/)).value = password
 
     button = form.button_with(value: /Anmelden/)
