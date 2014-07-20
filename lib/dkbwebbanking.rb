@@ -69,7 +69,7 @@ class DkbWebBanking
     end
     log_current_page('creditCardPage')
 
-    creditCardForms = @agent.page.forms_with(:name => /form-[0-9]+_1/)
+    creditCardForms = @agent.page.forms_with(:name => /form[0-9]+_1/)
     creditCardForm = nil
     for creditCardForm in creditCardForms
       unless creditCardForm.field_with(:name => 'slCreditCard').nil?
