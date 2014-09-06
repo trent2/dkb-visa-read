@@ -45,8 +45,8 @@ class DkbWebBanking
     @agent.get(@webBankingUrl)
     form = @agent.page.forms.first
 
-    form.field_with(name: name_for_label(/Anmeldename/)).value = account
-    form.field_with(name: name_for_label(/PIN/)).value = password
+    form.field_with(:dom_id => id_for_label(/Anmeldename/)).value = account
+    form.field_with(:dom_id => id_for_label(/PIN/)).value = password
 
     button = form.button_with(value: /Anmelden/)
 
@@ -69,7 +69,7 @@ class DkbWebBanking
     end
     log_current_page('creditCardPage')
 
-    creditCardForms = @agent.page.forms_with(:name => /form-[0-9]+_1/)
+    creditCardForms = @agent.page.forms_with(:name => /form[0-9]+_1/)
     creditCardForm = nil
     for creditCardForm in creditCardForms
       unless creditCardForm.field_with(:name => 'slCreditCard').nil?
@@ -132,7 +132,7 @@ class DkbWebBanking
     return transactions
   end
 
-  def name_for_label(label_text)
+  def id_for_label(label_text)
     @agent.page.labels.select { |l| l.text =~ /#{label_text}/ }
     .first.node.attribute('for').value
   end
