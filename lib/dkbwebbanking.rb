@@ -22,6 +22,7 @@ require 'rubygems'
 require 'mechanize'
 require 'logger'
 require 'lib/creditcardtransaction'
+require 'lib/financialstatus'
 
 class DkbWebBankingError < RuntimeError
 end
@@ -139,16 +140,24 @@ class DkbWebBanking
     end
     log_current_page('financeStatusPage')
 	
-	financialStatusCsv = ""
+	financialStatusList = []
 	
 	financialStatusRows = @agent.page.search('table.financialStatusTable').search('tbody').search('tr')[0...-1]
 	for row in financialStatusRows
-		if (!financialStatusCsv.empty?)
-			financialStatusCsv += "\n"
-		end
-		financialStatusCsv += row.search('.//*[self::td or self::th]').map{ |n| n.text.gsub(/[\n\t;]/, '').strip }[0...-1].join(";")
+		columns = row.search('.//*[self::td or self::th]').map{ |n| n.text.gsub(/[\n\t;]/, '').strip }[0...-1]
+		
+		status = FinancialStatus.new
+		status.Account = columns[0]
+		status.Name = columns[1]
+		status.Date = columns[2]
+		columns[3].strip =~ /([-0-9.]+,[0-9]+)/m
+		if columns[3].strip =~ /([-0-9.]+,[0-9]+)/m
+			status.Amount = format_number($1)
+			financialStatusList << status
+		  end
 	end
-	return financialStatusCsv
+	pp financialStatusList
+	return financialStatusList
   end
 
   def name_for_label(label_text)

@@ -49,12 +49,7 @@ def run
   begin
 	if options[:finanzstatus]
 		print_progress "Finanzstatus lesen ..."
-		
-		fileName = 'Finanzstatus.csv'
-		
-		File.open(fileName, 'w') { |file| file.write(webBanking.read_finance_status()) }
-		
-		puts "\nDer Finanzstatus steht nun in `#{fileName}` zur Verfügung\n\n"
+		write_financial_status(webBanking.read_finance_status())
 	end
     if options[:startDate]
       startDate = options[:startDate]
@@ -122,6 +117,23 @@ def write_turnovers(turnovers)
       puts "\nKeine neuen Buchungen vorhanden.\n\n"
     end
   end
+end
+
+def write_financial_status(financialStatusList)
+	fileName = 'Finanzstatus.csv'
+	
+	csvText = "";
+	
+	for status in financialStatusList
+		if (!csvText.empty?)
+			csvText += "\n"
+		end
+		csvText += "#{status.Account};#{status.Name};#{status.Date};#{status.Amount}"
+	end
+		
+	File.open(fileName, 'w') { |file| file.write(csvText) }
+	
+	puts "\nDer Finanzstatus steht nun in `#{fileName}` zur Verfügung\n\n"
 end
 
 def ask_for_pin
