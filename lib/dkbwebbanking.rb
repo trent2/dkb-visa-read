@@ -156,7 +156,6 @@ class DkbWebBanking
 			financialStatusList << status
 		  end
 	end
-	pp financialStatusList
 	return financialStatusList
   end
 
