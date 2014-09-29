@@ -131,6 +131,25 @@ class DkbWebBanking
     end
     return transactions
   end
+  
+  def read_finance_status()
+    @agent.page.link_with(:text => /Finanzstatus/).click
+    unless @agent.page.meta_refresh.empty?
+        @agent.page.meta_refresh.first.click
+    end
+    log_current_page('financeStatusPage')
+	
+	financialStatusCsv = ""
+	
+	financialStatusRows = @agent.page.search('table.financialStatusTable').search('tbody').search('tr')[0...-1]
+	for row in financialStatusRows
+		if (!financialStatusCsv.empty?)
+			financialStatusCsv += "\n"
+		end
+		financialStatusCsv += row.search('.//*[self::td or self::th]').map{ |n| n.text.gsub(/[\n\t;]/, '').strip }[0...-1].join(";")
+	end
+	return financialStatusCsv
+  end
 
   def name_for_label(label_text)
     @agent.page.labels.select { |l| l.text =~ /#{label_text}/ }
