@@ -47,6 +47,10 @@ def run
   print_progress 'Einloggen...'
   webBanking.logon(accountNumber, pin)
   begin
+	if options[:finanzstatus]
+		print_progress "Finanzstatus lesen ..."
+		write_financial_status(webBanking.read_finance_status())
+	end
     if options[:startDate]
       startDate = options[:startDate]
     else
@@ -73,7 +77,7 @@ def parse_options
   }
 
   ARGV.options do |opts|
-    opts.banner = "Verwendung: #{$0} [optionen] <Kontonummer>"
+    opts.banner = "Verwendung: #{$0} [optionen] <Anmeldename>"
     opts.on_tail('-h', '--help', 'Diese Hilfe.') do
       puts opts;
       exit
@@ -81,7 +85,8 @@ def parse_options
     opts.on('-t', '--tage <TAGE>', 'Nur Umsaetze der letzten <TAGE> Tage lesen.') do |d| options[:days] = d end
     opts.on('-s', '--start <DATUM>', 'Start-Datum ab dem die Umsaetze gelesen werden sollen (TT.MM.JJJJ).') do |s| options[:startDate] = s end
     opts.on('-l', '--log', 'Logdatei dkb-visa-read.log schreiben und HTML-Seiten sichern') do |l| options[:log] = l end
-    opts.on('-z', '--zugangsdaten <DATEI>', 'Kontonummer und Passwort aus Datei lesen') do |z| options[:account] = z end
+    opts.on('-f', '--finanzstatus', 'Speichern des Finanzstatus (Übersicht) als .csv Datei') do |f| options[:finanzstatus] = f end
+    opts.on('-z', '--zugangsdaten <DATEI>', 'Anmeldename und Passwort aus Datei lesen') do |z| options[:account] = z end
   end.parse!
   return options
 end
@@ -112,6 +117,23 @@ def write_turnovers(turnovers)
       puts "\nKeine neuen Buchungen vorhanden.\n\n"
     end
   end
+end
+
+def write_financial_status(financialStatusList)
+	fileName = 'Finanzstatus.csv'
+	
+	csvText = "";
+	
+	for status in financialStatusList
+		if (!csvText.empty?)
+			csvText += "\n"
+		end
+		csvText += "#{status.Account};#{status.Name};#{status.Date};#{status.Amount}"
+	end
+		
+	File.open(fileName, 'w') { |file| file.write(csvText) }
+	
+	puts "\nDer Finanzstatus steht nun in `#{fileName}` zur Verfügung\n\n"
 end
 
 def ask_for_pin
