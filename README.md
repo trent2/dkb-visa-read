@@ -18,6 +18,12 @@ Aufruf
         -z, --zugangsdaten <DATEI>       Kontonummer und Passwort aus Datei lesen
         -h, --help                       Diese Hilfe.
 
+Zugangsdaten-Datei
+------------------
+
+Wenn die Zugangsdaten in einer Datei abgespeichert werden, muss sich der Benutzername in der ersten Zeile der Textdatei befinden,
+das Passwort in der zweiten Zeile.
+		
 Weitere Informationen
 ---------------------
 [Das Mini-Skript aus dem Artikel der c't 4/2010, Seite 129]
