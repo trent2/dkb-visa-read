@@ -1,4 +1,5 @@
 #!/usr/bin/ruby
+# coding: iso-8859-15
 #
 # dkb-visa-read - reads the creditcard turnovers from the DKB web banking
 #
@@ -85,7 +86,7 @@ def parse_options
     opts.on('-t', '--tage <TAGE>', 'Nur Umsaetze der letzten <TAGE> Tage lesen.') do |d| options[:days] = d end
     opts.on('-s', '--start <DATUM>', 'Start-Datum ab dem die Umsaetze gelesen werden sollen (TT.MM.JJJJ).') do |s| options[:startDate] = s end
     opts.on('-l', '--log', 'Logdatei dkb-visa-read.log schreiben und HTML-Seiten sichern') do |l| options[:log] = l end
-    opts.on('-f', '--finanzstatus', 'Speichern des Finanzstatus (Übersicht) als .csv Datei') do |f| options[:finanzstatus] = f end
+    opts.on('-f', '--finanzstatus', 'Speichern des Finanzstatus (Uebersicht) als .csv Datei') do |f| options[:finanzstatus] = f end
     opts.on('-z', '--zugangsdaten <DATEI>', 'Anmeldename und Passwort aus Datei lesen') do |z| options[:account] = z end
   end.parse!
   return options
