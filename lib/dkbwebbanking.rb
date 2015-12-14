@@ -127,7 +127,9 @@ class DkbWebBanking
 
       if columns[3].text.strip =~ /([-0-9.]+,[0-9]+)/m
         transaction.Amount = format_number($1)
-        transactions << transaction
+        if posting_date.strip =~ /[0-9.]+/m
+          transactions << transaction
+        end
       end
     end
     return transactions
